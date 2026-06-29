@@ -81,10 +81,7 @@ export default function Dashboard() {
           {/* Logo */}
           <div className="flex items-center gap-3 shrink-0 mr-auto">
             <img src="/LogoSS.png" alt="Sport Solutions" className="h-8 w-auto shrink-0" />
-            <div className="hidden sm:block leading-tight">
-              <p className="text-sm font-bold text-gray-800">Sport Solutions</p>
-              <p className="text-xs text-gray-400">Panel de Inventario</p>
-            </div>
+            <p className="hidden sm:block text-sm font-medium text-gray-600">Panel de Inventario</p>
           </div>
 
           {/* Última actualización */}

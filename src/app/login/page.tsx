@@ -37,7 +37,6 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <img src="/LogoSS.png" alt="Sport Solutions" className="h-16 w-auto mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-800">Sport Solutions</h1>
           <p className="text-sm text-gray-400 mt-1">Panel de Inventario</p>
         </div>
 
