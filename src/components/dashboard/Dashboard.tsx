@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { Package, RefreshCw, LogOut, AlertTriangle } from 'lucide-react';
+import { RefreshCw, LogOut, AlertTriangle } from 'lucide-react';
+import Image from 'next/image';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useOVs } from '@/hooks/useOVs';
 import { useInventario } from '@/hooks/useInventario';
@@ -80,12 +81,14 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
           {/* Logo */}
           <div className="flex items-center gap-3 shrink-0 mr-auto">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: ACCENT }}
-            >
-              <Package size={16} className="text-white" />
-            </div>
+            <Image
+              src="/LogoSS.png"
+              alt="Sport Solutions"
+              width={32}
+              height={32}
+              className="shrink-0 object-contain"
+              priority
+            />
             <div className="hidden sm:block leading-tight">
               <p className="text-sm font-bold text-gray-800">Sport Solutions</p>
               <p className="text-xs text-gray-400">Panel de Inventario</p>
