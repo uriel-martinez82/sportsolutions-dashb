@@ -38,7 +38,8 @@ export async function GET() {
     ]);
 
     const compras = toObjects(comprasRows).filter(r => String(r.NUM_OC ?? '').trim() && String(r.SKU ?? '').trim());
-    const ventas = toObjects(ventasRows, true).filter(r => String(r.NUM_OV ?? '').trim() && String(r.SKU ?? '').trim());
+    // Solo requerir NUM_OV — filas sin SKU deben mostrarse en la tabla de OVs
+    const ventas = toObjects(ventasRows, true).filter(r => String(r.NUM_OV ?? '').trim());
 
     const ovsPendientes = ventas.filter(v => {
       const status = (v.STATUS || '').toUpperCase().trim();

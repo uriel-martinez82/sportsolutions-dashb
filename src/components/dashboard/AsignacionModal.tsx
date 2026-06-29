@@ -79,39 +79,54 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
     setSubmitting(true);
     setSubmitError(null);
 
+    const status = completo ? 'Apartado' : 'Sin cobertura';
+    const estado = completo ? 'Apartado' : 'Sin stock';
+
     try {
-      // 1. Actualizar CANTIDAD_DISPONIBLE y CANTIDAD_APARTADA en cada OC de COMPRAS
-      for (const oc of ocsConAsignacion) {
-        const res = await fetch('/api/compras/asignar', {
+      for (let i = 0; i < ocsConAsignacion.length; i++) {
+        const oc = ocsConAsignacion[i];
+        const cantidadAsignar = asignaciones[oc.rowIndexInSheet];
+        const isFirstOC = i === 0;
+
+        // 1. Actualizar COMPRAS: restar disponible, sumar apartado
+        const comprasRes = await fetch('/api/compras/asignar', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rowIndex: oc.rowIndexInSheet, cantidadAsignar }),
+        });
+        if (!comprasRes.ok) {
+          const json = await comprasRes.json().catch(() => ({}));
+          throw new Error(json.error ?? `Error al actualizar OC ${oc.NUM_OC} en COMPRAS`);
+        }
+
+        // 2. Actualizar/agregar fila en VENTAS
+        const ventasRes = await fetch('/api/ventas/asignar', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            rowIndex: oc.rowIndexInSheet,
-            cantidadAsignar: asignaciones[oc.rowIndexInSheet],
+            ovRowIndex: target.ventaRowIndex,
+            numOV: target.numOV,
+            numOC: oc.NUM_OC,
+            sku: target.sku,
+            cantidad: cantidadAsignar,
+            isFirstOC,
+            status,
+            estado,
+            descripcion: target.descripcion,
+            fabricante: target.fabricante,
+            marca: target.marca,
+            lineaProducto: target.lineaProducto,
+            nombreProveedor: target.nombreProveedor,
+            cliente: target.cliente,
+            almacen: target.almacen,
+            fechaEntrega: target.fechaEntrega,
+            moneda: target.moneda,
           }),
         });
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error ?? `Error al actualizar OC ${oc.NUM_OC}`);
+        if (!ventasRes.ok) {
+          const json = await ventasRes.json().catch(() => ({}));
+          throw new Error(json.error ?? `Error al actualizar VENTAS para OC ${oc.NUM_OC}`);
         }
-      }
-
-      // 2. Actualizar STATUS y ESTADO en la fila de VENTAS
-      const status = completo ? 'Apartado' : 'Sin cobertura';
-      const estado = completo ? 'Apartado' : 'Sin stock';
-
-      const ventasRes = await fetch('/api/ventas/asignar', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rowIndex: target.ventaRowIndex,
-          status,
-          estado,
-        }),
-      });
-      if (!ventasRes.ok) {
-        const json = await ventasRes.json().catch(() => ({}));
-        throw new Error(json.error ?? 'Error al actualizar la OV en VENTAS');
       }
 
       onSuccess();

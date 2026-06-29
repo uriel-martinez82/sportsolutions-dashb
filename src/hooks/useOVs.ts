@@ -51,6 +51,7 @@ export function useOVs(ovsPendientes: OVRecord[]): OVsState {
 
   // Agrupa TODOS los registros por NUM_OV (sin filtrar) — la expansión muestra todos los SKUs
   const allGroups = useMemo<OVGrouped[]>(() => {
+    console.log('[useOVs] ovsPendientes recibidos:', ovsPendientes.length, 'filas');
     const map = new Map<string, OVGrouped>();
 
     for (const r of ovsPendientes) {
@@ -81,12 +82,14 @@ export function useOVs(ovsPendientes: OVRecord[]): OVsState {
       }
     }
 
-    return Array.from(map.values());
+    const groups = Array.from(map.values());
+    console.log('[useOVs] OVs agrupadas:', groups.length, '| statuses únicos:', Array.from(new Set(ovsPendientes.map(r => r.STATUS))));
+    return groups;
   }, [ovsPendientes]);
 
   // Filtra a nivel de OV: una OV aparece si ALGUNO de sus campos/SKUs coincide
   const filteredGroups = useMemo<OVGrouped[]>(() => {
-    return allGroups.filter(g => {
+    const result = allGroups.filter(g => {
       if (filters.search && !normalize(g.NUM_OV).includes(normalize(filters.search))) return false;
       if (filters.cliente && g.CLIENTE !== filters.cliente) return false;
       if (filters.status && !g.statuses.includes(filters.status)) return false;
@@ -95,6 +98,8 @@ export function useOVs(ovsPendientes: OVRecord[]): OVsState {
       }
       return true;
     });
+    console.log('[useOVs] filteredGroups:', result.length, '| filtros activos:', filters);
+    return result;
   }, [allGroups, filters]);
 
   return {

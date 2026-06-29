@@ -222,8 +222,15 @@ export default function OVsTab({
     setModalTarget({
       sku: record.SKU,
       descripcion: record.DESCRIPCION,
+      fabricante: record.FABRICANTE,
+      marca: record.MARCA,
+      lineaProducto: record.LINEA_PRODUCTO,
+      nombreProveedor: record.NOMBRE_PROVEEDOR,
       numOV: record.NUM_OV,
       cliente: record.CLIENTE,
+      almacen: record.ALMACEN,
+      fechaEntrega: record.FECHA_ENTREGA_CLIENTE,
+      moneda: record.MONEDA,
       cantidadRequerida: parseInt(record.CANTIDAD) || 0,
       ventaRowIndex: record._rowIndex,
     });

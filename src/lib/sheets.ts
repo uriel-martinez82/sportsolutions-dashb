@@ -64,6 +64,23 @@ export async function batchUpdateCells(
   });
 }
 
+/** Agrega una fila al final de la hoja. */
+export async function appendRow(
+  spreadsheetId: string,
+  sheet: string,
+  values: (string | number)[]
+) {
+  const auth = buildAuthClient();
+  const sheets = google.sheets({ version: 'v4', auth });
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${sheet}!A:A`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [values] },
+  });
+}
+
 /** Lee la fila de encabezados de una hoja y devuelve un mapa nombre→índice. */
 export async function getHeaderMap(
   spreadsheetId: string,

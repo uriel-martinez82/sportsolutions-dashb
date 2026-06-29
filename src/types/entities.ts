@@ -91,8 +91,15 @@ export interface CompraDisponible {
 export interface AsignacionTarget {
   sku: string;
   descripcion: string;
+  fabricante: string;
+  marca: string;
+  lineaProducto: string;
+  nombreProveedor: string;
   numOV: string;
   cliente: string;
+  almacen: string;
+  fechaEntrega: string;
+  moneda: string;
   cantidadRequerida: number;
   ventaRowIndex: number;
 }
