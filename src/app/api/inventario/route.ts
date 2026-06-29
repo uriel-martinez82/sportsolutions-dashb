@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSheetData } from '@/lib/sheets';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // No cachear en Vercel Edge
+
+// getSheetData usa googleapis (https nativo, no fetch), el caché se controla
+// solo con los exports de arriba, no con { cache: 'no-store' } en el llamado.
 export async function GET() {
   try {
     const rows = await getSheetData(

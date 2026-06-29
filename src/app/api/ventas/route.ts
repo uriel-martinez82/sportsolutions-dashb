@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
+
+export const dynamic = 'force-dynamic';
 import { authOptions } from '@/lib/auth';
 import { getSheetData } from '@/lib/sheets';
 

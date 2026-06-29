@@ -70,8 +70,13 @@ function SKUsDetailPanel({
                 key={`${r.SKU}-${i}`}
                 className="border-b border-gray-50 last:border-b-0 hover:bg-blue-50/20 transition-colors"
               >
-                <td className="px-4 py-2.5 font-mono font-semibold text-gray-700 whitespace-nowrap">
-                  {r.SKU}
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  <span className="font-mono font-semibold text-gray-700">{r.SKU}</span>
+                  {r.NUM_OC?.trim() && (
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold uppercase tracking-wide">
+                      Asignado
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-2.5 text-gray-500 max-w-[260px] truncate" title={r.DESCRIPCION}>
                   {r.DESCRIPCION || '—'}
@@ -94,15 +99,26 @@ function SKUsDetailPanel({
                 </td>
                 {isAdmin && (
                   <td className="px-4 py-2.5 text-right">
-                    <button
-                      onClick={() => onAsignar(r)}
-                      disabled={!r._rowIndex}
-                      title={r._rowIndex ? 'Asignar inventario' : 'Sin índice de fila'}
-                      className="text-[11px] px-3 py-1 rounded-lg font-semibold text-white disabled:opacity-30 transition-opacity hover:opacity-90 whitespace-nowrap"
-                      style={{ backgroundColor: '#E8420C' }}
-                    >
-                      Asignar
-                    </button>
+                    {r.NUM_OC?.trim() ? (
+                      <button
+                        onClick={() => onAsignar(r)}
+                        disabled={!r._rowIndex}
+                        title={r._rowIndex ? 'Re-asignar inventario' : 'Sin índice de fila'}
+                        className="text-[11px] px-3 py-1 rounded-lg font-semibold border border-gray-300 text-gray-600 bg-white disabled:opacity-30 transition-colors hover:bg-gray-50 whitespace-nowrap"
+                      >
+                        Re-Asignar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onAsignar(r)}
+                        disabled={!r._rowIndex}
+                        title={r._rowIndex ? 'Asignar inventario' : 'Sin índice de fila'}
+                        className="text-[11px] px-3 py-1 rounded-lg font-semibold text-white disabled:opacity-30 transition-opacity hover:opacity-90 whitespace-nowrap"
+                        style={{ backgroundColor: '#E8420C' }}
+                      >
+                        Asignar
+                      </button>
+                    )}
                   </td>
                 )}
               </tr>
@@ -233,6 +249,7 @@ export default function OVsTab({
       moneda: record.MONEDA,
       cantidadRequerida: parseInt(record.CANTIDAD) || 0,
       ventaRowIndex: record._rowIndex,
+      isReAsignacion: !!record.NUM_OC?.trim(),
     });
   };
 

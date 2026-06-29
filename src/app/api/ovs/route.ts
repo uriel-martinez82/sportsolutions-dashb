@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSheetData } from '@/lib/sheets';
 
+export const dynamic = 'force-dynamic';
+
 const normalizarBodega = (val: string): string => {
   const v = val.toUpperCase().trim();
   if (v.includes('PROVA GDL') || v.includes('PORVA GDL') || v.includes('BODEGA PROVA GDL')) return 'PROVA GDL';

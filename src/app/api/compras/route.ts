@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { getSheetData } from '@/lib/sheets';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function toNumber(value: string | undefined): number {
   if (!value) return 0;
   const normalized = String(value).trim().replace(/\./g, '').replace(',', '.');

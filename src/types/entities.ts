@@ -102,4 +102,5 @@ export interface AsignacionTarget {
   moneda: string;
   cantidadRequerida: number;
   ventaRowIndex: number;
+  isReAsignacion: boolean;
 }

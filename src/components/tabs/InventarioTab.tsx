@@ -244,14 +244,17 @@ function buildColumns(): ColumnDef<InventarioItem>[] {
       key: 'CANTIDAD_APARTADA',
       header: 'Apartado',
       sortable: true,
-      sortValue: r => r.CANTIDAD_APARTADA,
+      sortValue: r => r.OCS.reduce((s, oc) => s + oc.CANTIDAD_APARTADA, 0),
       headerClass: 'text-right',
       className: 'text-right',
-      render: r => (
-        <span className={`font-semibold tabular-nums ${r.CANTIDAD_APARTADA > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
-          {r.CANTIDAD_APARTADA.toLocaleString('es-MX')}
-        </span>
-      ),
+      render: r => {
+        const total = r.OCS.reduce((s, oc) => s + oc.CANTIDAD_APARTADA, 0);
+        return (
+          <span className={`font-semibold tabular-nums ${total > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+            {total.toLocaleString('es-MX')}
+          </span>
+        );
+      },
     },
     {
       key: 'OCS',

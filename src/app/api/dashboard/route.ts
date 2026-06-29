@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSheetData } from '@/lib/sheets';
 
+export const dynamic = 'force-dynamic';
+
 function toObjects(rows: any[][], withRowIndex = false): Record<string, string>[] {
   if (!rows.length) return [];
 

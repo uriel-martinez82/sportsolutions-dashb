@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, AlertTriangle, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle, Loader2, RefreshCw, Info } from 'lucide-react';
 import type { AsignacionTarget, CompraDisponible } from '@/types/entities';
 
 interface AsignacionModalProps {
@@ -129,8 +129,9 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
         }
       }
 
-      onSuccess();
-      window.location.reload();
+      onClose();
+      // Dar 1500ms para que la escritura en Sheets se propague antes de refetch
+      setTimeout(() => onSuccess(), 1500);
     } catch (e: any) {
       setSubmitError(e.message ?? 'Error al confirmar la asignación.');
     } finally {
@@ -150,7 +151,7 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
         <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-4 shrink-0">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-gray-800 leading-tight">
-              Asignar inventario —{' '}
+              {target.isReAsignacion ? 'Re-Asignar inventario' : 'Asignar inventario'}{' '}—{' '}
               <span className="font-mono text-sm text-gray-600">{target.sku}</span>
             </h2>
             <p className="text-xs text-gray-500 mt-0.5 truncate" title={target.descripcion}>
@@ -203,7 +204,17 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
               </p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <div>
+              {target.isReAsignacion && (
+                <div className="mx-5 mt-4 mb-1 flex items-start gap-2.5 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
+                  <Info size={14} className="mt-0.5 shrink-0 text-yellow-600" />
+                  <p className="text-xs text-yellow-800">
+                    <span className="font-semibold">Este SKU ya tiene asignación previa.</span>{' '}
+                    La nueva asignación reemplazará la anterior.
+                  </p>
+                </div>
+              )}
+            <table className="w-full text-sm mt-2">
               <thead className="sticky top-0 bg-white">
                 <tr className="border-b border-gray-100 bg-gray-50/80">
                   {['NUM OC', 'Almacén', 'Disponible', 'Apartado', 'A asignar'].map(h => (
@@ -257,6 +268,7 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
