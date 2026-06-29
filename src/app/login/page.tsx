@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,14 +36,7 @@ export default function LoginPage() {
         
         {/* Logo */}
         <div className="text-center mb-8">
-          <Image
-            src="/LogoSS.png"
-            alt="Sport Solutions"
-            width={120}
-            height={120}
-            className="mx-auto mb-4 object-contain"
-            priority
-          />
+          <img src="/LogoSS.png" alt="Sport Solutions" className="h-16 w-auto mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-800">Sport Solutions</h1>
           <p className="text-sm text-gray-400 mt-1">Panel de Inventario</p>
         </div>
