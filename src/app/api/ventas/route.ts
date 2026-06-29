@@ -35,8 +35,9 @@ export async function GET(request: Request) {
     const iCANTIDAD = idx('CANTIDAD');
     const iFECHA = idx('FECHA_ENTREGA_CLIENTE');
     const iSTATUS = idx('STATUS');
+    const iESTADO = idx('ESTADO');
 
-    if (iSKU < 0 || iNUM_OV < 0 || iSTATUS < 0) {
+    if (iSKU < 0 || iNUM_OV < 0) {
       return NextResponse.json({ error: 'Estructura de hoja VENTAS inesperada' }, { status: 500 });
     }
 
@@ -46,9 +47,14 @@ export async function GET(request: Request) {
     const result = rows.slice(1)
       .filter(row => {
         const rowSku = String(row[iSKU] ?? '').toUpperCase().trim();
-        const status = String(row[iSTATUS] ?? '').toUpperCase().trim();
-        if (rowSku !== skuNorm || status !== 'APARTADO') return false;
-        if (ocNorm && String(row[iNUM_OC] ?? '').toUpperCase().trim() !== ocNorm) return false;
+        if (rowSku !== skuNorm) return false;
+
+        // Considera apartado si ESTADO = "Apartado" O si NUM_OC no está vacío
+        const estado = String(row[iESTADO] ?? '').trim().toLowerCase();
+        const numOC = String(row[iNUM_OC] ?? '').trim();
+        if (estado !== 'apartado' && !numOC) return false;
+
+        if (ocNorm && numOC.toUpperCase() !== ocNorm) return false;
         return true;
       })
       .map(row => ({
