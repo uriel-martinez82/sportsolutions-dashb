@@ -24,7 +24,7 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await fetch(`/api/compras?sku=${encodeURIComponent(target.sku)}`);
+      const res = await fetch(`/api/compras?sku=${encodeURIComponent(target.sku)}`, { cache: 'no-store' });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? `Error ${res.status}`);
@@ -130,7 +130,7 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
       }
 
       onSuccess();
-      onClose();
+      window.location.reload();
     } catch (e: any) {
       setSubmitError(e.message ?? 'Error al confirmar la asignación.');
     } finally {
