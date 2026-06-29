@@ -25,3 +25,17 @@ body {
     text-wrap: balance;
   }
 }
+
+input::placeholder {
+  color: #9CA3AF;
+}
+
+input {
+  color: #111827 !important;
+  font-weight: 400;
+}
+
+select {
+  color: #111827 !important;
+  font-weight: 400;
+}
