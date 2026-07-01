@@ -31,37 +31,53 @@ function toNumber(value: string) {
 }
 
 export async function GET() {
-  try {
-    const spreadsheetId = process.env.NUEVO_MADRE_ID!;
+  const spreadsheetId = process.env.NUEVO_MADRE_ID;
 
-    const [comprasRows, ventasRows] = await Promise.all([
+  // ── 1. Variables de entorno ──────────────────────────────────────────────
+  console.log('[dashboard] NUEVO_MADRE_ID presente:', !!spreadsheetId);
+  console.log('[dashboard] GOOGLE_CLIENT_ID presente:', !!process.env.GOOGLE_CLIENT_ID);
+  console.log('[dashboard] GOOGLE_REFRESH_TOKEN presente:', !!process.env.GOOGLE_REFRESH_TOKEN);
+
+  if (!spreadsheetId) {
+    const msg = 'NUEVO_MADRE_ID no está definido en las variables de entorno';
+    console.error('[dashboard]', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+
+  // ── 2. Fetch de Google Sheets ────────────────────────────────────────────
+  let comprasRows: any[][];
+  let ventasRows: any[][];
+
+  try {
+    console.log('[dashboard] Iniciando fetch de COMPRAS y VENTAS...');
+    [comprasRows, ventasRows] = await Promise.all([
       getSheetData(spreadsheetId, 'COMPRAS!A1:V10000'),
       getSheetData(spreadsheetId, 'VENTAS!A1:R10000'),
     ]);
+    console.log('[dashboard] COMPRAS filas:', comprasRows.length, '| VENTAS filas:', ventasRows.length);
+  } catch (error: any) {
+    console.error('[dashboard] Error al leer Google Sheets:', error?.message, error?.stack);
+    return NextResponse.json(
+      { error: error?.message ?? 'Error al leer Google Sheets', stack: error?.stack },
+      { status: 500 }
+    );
+  }
 
+  // ── 3. Procesamiento de datos ────────────────────────────────────────────
+  try {
     const compras = toObjects(comprasRows).filter(r => String(r.NUM_OC ?? '').trim() && String(r.SKU ?? '').trim());
-    // Solo requerir NUM_OV — filas sin SKU deben mostrarse en la tabla de OVs
     const ventas = toObjects(ventasRows, true).filter(r => String(r.NUM_OV ?? '').trim());
+
+    console.log('[dashboard] compras válidas:', compras.length, '| ventas válidas:', ventas.length);
 
     const ovsPendientes = ventas.filter(v => {
       const status = (v.STATUS || '').toUpperCase().trim();
       return status !== 'ENTREGADO' && status !== 'CANCELADO';
     });
 
-    const totalComprado = compras.reduce(
-      (sum, r) => sum + toNumber(r.CANTIDAD_COMPRADA),
-      0
-    );
-
-    const totalDisponible = compras.reduce(
-      (sum, r) => sum + toNumber(r.CANTIDAD_DISPONIBLE),
-      0
-    );
-
-    const totalApartado = compras.reduce(
-      (sum, r) => sum + toNumber(r.CANTIDAD_APARTADA),
-      0
-    );
+    const totalComprado = compras.reduce((sum, r) => sum + toNumber(r.CANTIDAD_COMPRADA), 0);
+    const totalDisponible = compras.reduce((sum, r) => sum + toNumber(r.CANTIDAD_DISPONIBLE), 0);
+    const totalApartado = compras.reduce((sum, r) => sum + toNumber(r.CANTIDAD_APARTADA), 0);
 
     const inventarioMap = new Map<string, any>();
 
@@ -117,6 +133,8 @@ export async function GET() {
       (a, b) => b.CANTIDAD_DISPONIBLE - a.CANTIDAD_DISPONIBLE
     );
 
+    console.log('[dashboard] inventario SKUs:', inventario.length, '| ovsPendientes:', ovsPendientes.length);
+
     return NextResponse.json({
       compras,
       ventas,
@@ -131,10 +149,10 @@ export async function GET() {
         totalOCs: new Set(compras.map(c => c.NUM_OC).filter(Boolean)).size,
       },
     });
-  } catch (error) {
-    console.error('Error fetching dashboard:', error);
+  } catch (error: any) {
+    console.error('[dashboard] Error en procesamiento de datos:', error?.message, error?.stack);
     return NextResponse.json(
-      { error: 'Error al obtener datos del dashboard' },
+      { error: error?.message ?? 'Error en procesamiento de datos', stack: error?.stack },
       { status: 500 }
     );
   }
