@@ -120,7 +120,7 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
             lineaProducto: target.lineaProducto,
             nombreProveedor: target.nombreProveedor,
             cliente: target.cliente,
-            almacen: target.almacen,
+            almacen: oc.ALMACEN,
             fechaEntrega: target.fechaEntrega,
             moneda: target.moneda,
           }),
