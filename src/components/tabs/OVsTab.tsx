@@ -40,24 +40,48 @@ function SKUsDetailPanel({
   group,
   isAdmin,
   rowActions,
+  entregaTotalProcessing,
   onAsignar,
   onCancelar,
   onEntregar,
+  onEntregaTotal,
 }: {
   group: OVGrouped;
   isAdmin: boolean;
   rowActions: Record<number, RowActionState>;
+  entregaTotalProcessing: boolean;
   onAsignar: (record: OVRecord) => void;
   onCancelar: (record: OVRecord) => void;
   onEntregar: (record: OVRecord) => void;
+  onEntregaTotal: (group: OVGrouped) => void;
 }) {
+  const algunSinAsignar = group.skus.some(
+    s => (parseInt(s.CANTIDAD) || 0) > 0 && !s.NUM_OC?.trim()
+  );
+  const entregaTotalDisabled = algunSinAsignar || entregaTotalProcessing;
+
   return (
     <div className="rounded-xl border border-blue-100 bg-white overflow-hidden shadow-sm">
-      <div className="px-4 py-2.5 bg-blue-50/60 border-b border-blue-100">
+      <div className="px-4 py-2.5 bg-blue-50/60 border-b border-blue-100 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-gray-600">
           SKUs de <span className="font-mono">{group.NUM_OV}</span>
           <span className="font-normal text-gray-400 ml-2">· {group.CLIENTE}</span>
         </p>
+        {isAdmin && (
+          <button
+            onClick={() => onEntregaTotal(group)}
+            disabled={entregaTotalDisabled}
+            title={algunSinAsignar ? 'Todos los SKUs deben tener OC asignada' : 'Marcar toda la OV como entregada'}
+            className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-semibold border transition-colors whitespace-nowrap shrink-0 ${
+              entregaTotalDisabled
+                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                : 'border-green-300 text-green-600 bg-white hover:bg-green-50'
+            }`}
+          >
+            {entregaTotalProcessing && <Loader2 size={12} className="animate-spin" />}
+            Entrega total
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -294,6 +318,7 @@ export default function OVsTab({
 }: OVsTabProps) {
   const [modalTarget, setModalTarget] = useState<AsignacionTarget | null>(null);
   const [rowActions, setRowActions] = useState<Record<number, RowActionState>>({});
+  const [entregaTotalState, setEntregaTotalState] = useState<Record<string, 'idle' | 'processing'>>({});
 
   const setRowAction = (rowIndex: number, state: RowActionState) => {
     setRowActions(prev => ({ ...prev, [rowIndex]: state }));
@@ -344,11 +369,9 @@ export default function OVsTab({
     }
   };
 
-  const handleEntregar = async (record: OVRecord) => {
+  /** Marca un SKU como entregado (VENTAS + COMPRAS), sin confirmación ni refetch. */
+  const entregarSku = async (record: OVRecord) => {
     if (!record._rowIndex) return;
-    const ok = window.confirm('¿Marcar como entregado?');
-    if (!ok) return;
-
     const rowIndex = record._rowIndex;
     setRowAction(rowIndex, 'delivering');
 
@@ -375,10 +398,42 @@ export default function OVsTab({
       }
 
       setRowAction(rowIndex, 'done');
-      setTimeout(() => onRefetch(), 1500);
     } catch (e: any) {
       setRowAction(rowIndex, 'idle');
+      throw e;
+    }
+  };
+
+  const handleEntregar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
+    const ok = window.confirm('¿Marcar como entregado?');
+    if (!ok) return;
+
+    try {
+      await entregarSku(record);
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
       window.alert(e.message ?? 'Error al marcar como entregado.');
+    }
+  };
+
+  const handleEntregaTotal = async (group: OVGrouped) => {
+    const ok = window.confirm('¿Marcar toda la OV como entregada?');
+    if (!ok) return;
+
+    setEntregaTotalState(prev => ({ ...prev, [group.NUM_OV]: 'processing' }));
+
+    const pendientes = group.skus.filter(r => r.NUM_OC?.trim() && r.STATUS !== 'Entregado');
+
+    try {
+      for (const r of pendientes) {
+        await entregarSku(r);
+      }
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
+      window.alert(e.message ?? 'Error al marcar la OV como entregada.');
+    } finally {
+      setEntregaTotalState(prev => ({ ...prev, [group.NUM_OV]: 'idle' }));
     }
   };
 
@@ -462,9 +517,11 @@ export default function OVsTab({
             group={group}
             isAdmin={isAdmin}
             rowActions={rowActions}
+            entregaTotalProcessing={entregaTotalState[group.NUM_OV] === 'processing'}
             onAsignar={handleAsignar}
             onCancelar={handleCancelar}
             onEntregar={handleEntregar}
+            onEntregaTotal={handleEntregaTotal}
           />
         )}
       />
