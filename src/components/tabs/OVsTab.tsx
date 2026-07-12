@@ -71,7 +71,11 @@ function SKUsDetailPanel({
           <button
             onClick={() => onEntregaTotal(group)}
             disabled={entregaTotalDisabled}
-            title={algunSinAsignar ? 'Todos los SKUs deben tener OC asignada' : 'Marcar toda la OV como entregada'}
+            title={
+              algunSinAsignar
+                ? 'Todos los SKUs deben tener OC asignada'
+                : 'Marcar todos los SKUs de esta OV como entregados de una sola vez. Solo se habilita cuando todos los SKUs tienen stock asignado. Una vez confirmado, no se puede deshacer.'
+            }
             className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-semibold border transition-colors whitespace-nowrap shrink-0 ${
               entregaTotalDisabled
                 ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
@@ -148,7 +152,11 @@ function SKUsDetailPanel({
                           <button
                             onClick={() => onAsignar(r)}
                             disabled={disabled}
-                            title={r._rowIndex ? 'Re-asignar inventario' : 'Sin índice de fila'}
+                            title={
+                              r._rowIndex
+                                ? 'Este SKU ya tiene stock asignado. Podés modificar la asignación eligiendo una OC diferente o cambiando las cantidades. El inventario se actualizará automáticamente.'
+                                : 'Sin índice de fila'
+                            }
                             className={`text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
                               disabled
                                 ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
@@ -161,7 +169,11 @@ function SKUsDetailPanel({
                           <button
                             onClick={() => onAsignar(r)}
                             disabled={disabled}
-                            title={r._rowIndex ? 'Asignar inventario' : 'Sin índice de fila'}
+                            title={
+                              r._rowIndex
+                                ? 'Asignar productos del inventario a este SKU. Se abrirá un modal donde podrás elegir de qué Orden de Compra tomar el stock y en qué cantidad.'
+                                : 'Sin índice de fila'
+                            }
                             className={`text-[11px] px-3 py-1 rounded-lg font-semibold transition-opacity whitespace-nowrap ${
                               disabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'text-white hover:opacity-90'
                             }`}
@@ -175,7 +187,11 @@ function SKUsDetailPanel({
                           <button
                             onClick={() => onCancelar(r)}
                             disabled={disabled}
-                            title={r._rowIndex ? 'Cancelar SKU' : 'Sin índice de fila'}
+                            title={
+                              r._rowIndex
+                                ? 'Cancelar este SKU de la OV. La cantidad se pondrá en 0 y las unidades apartadas volverán al inventario disponible. Esta acción no se puede deshacer.'
+                                : 'Sin índice de fila'
+                            }
                             className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
                               disabled
                                 ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
@@ -191,7 +207,11 @@ function SKUsDetailPanel({
                           <button
                             onClick={() => onEntregar(r)}
                             disabled={disabled}
-                            title={r._rowIndex ? 'Marcar como entregado' : 'Sin índice de fila'}
+                            title={
+                              r._rowIndex
+                                ? 'Marcar este SKU como entregado al cliente. Las unidades se restarán definitivamente del inventario apartado y no podrán modificarse nuevamente.'
+                                : 'Sin índice de fila'
+                            }
                             className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
                               disabled
                                 ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
