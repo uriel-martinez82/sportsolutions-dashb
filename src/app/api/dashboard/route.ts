@@ -35,8 +35,8 @@ export async function GET() {
 
   // ── 1. Variables de entorno ──────────────────────────────────────────────
   console.log('[dashboard] NUEVO_MADRE_ID presente:', !!spreadsheetId);
-  console.log('[dashboard] GOOGLE_CLIENT_ID presente:', !!process.env.GOOGLE_CLIENT_ID);
-  console.log('[dashboard] GOOGLE_REFRESH_TOKEN presente:', !!process.env.GOOGLE_REFRESH_TOKEN);
+  console.log('[dashboard] GOOGLE_SERVICE_ACCOUNT_EMAIL presente:', !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+  console.log('[dashboard] GOOGLE_PRIVATE_KEY presente:', !!process.env.GOOGLE_PRIVATE_KEY);
 
   if (!spreadsheetId) {
     const msg = 'NUEVO_MADRE_ID no está definido en las variables de entorno';

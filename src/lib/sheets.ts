@@ -1,25 +1,20 @@
 import { google } from 'googleapis';
 
-function buildAuthClient() {
-  const oAuth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID!,
-    process.env.GOOGLE_CLIENT_SECRET!,
-    process.env.GOOGLE_REDIRECT_URI!
-  );
-  oAuth2Client.setCredentials({
-    access_token: process.env.GOOGLE_ACCESS_TOKEN,
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-  });
-  return oAuth2Client;
-}
+const auth = new google.auth.GoogleAuth({
+  credentials: {
+    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  },
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
 
-export async function getAuthClient() {
-  return buildAuthClient();
+export async function getSheets() {
+  const authClient = await auth.getClient();
+  return google.sheets({ version: 'v4', auth: authClient as any });
 }
 
 export async function getSheetData(spreadsheetId: string, range: string) {
-  const auth = buildAuthClient();
-  const sheets = google.sheets({ version: 'v4', auth });
+  const sheets = await getSheets();
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -40,17 +35,12 @@ export function indexToColumnLetter(index: number): string {
   return letter;
 }
 
-/**
- * Escribe múltiples celdas en una sola llamada batch.
- * Requiere que token.json haya sido generado con scope
- * https://www.googleapis.com/auth/spreadsheets (no readonly).
- */
+/** Escribe múltiples celdas en una sola llamada batch. */
 export async function batchUpdateCells(
   spreadsheetId: string,
   updates: { range: string; value: string | number }[]
 ) {
-  const auth = buildAuthClient();
-  const sheets = google.sheets({ version: 'v4', auth });
+  const sheets = await getSheets();
 
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
@@ -70,8 +60,7 @@ export async function appendRow(
   sheet: string,
   values: (string | number)[]
 ) {
-  const auth = buildAuthClient();
-  const sheets = google.sheets({ version: 'v4', auth });
+  const sheets = await getSheets();
   await sheets.spreadsheets.values.append({
     spreadsheetId,
     range: `${sheet}!A:A`,
