@@ -34,6 +34,13 @@ const users: AppUser[] = [
     password: 'admin123',
     role: 'admin',
   },
+  {
+    id: '7',
+    name: 'Uriel Martinez',
+    email: 'uriel.martinez.elias@gmail.com',
+    password: 'admin123',
+    role: 'admin',
+  },
 
   // Vendedores
   {
