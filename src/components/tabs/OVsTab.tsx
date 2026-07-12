@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import FilterBar from '@/components/ui/FilterBar';
 import DataTable, { type ColumnDef } from '@/components/ui/DataTable';
 import AsignacionModal from '@/components/dashboard/AsignacionModal';
 import type { OVGrouped, OVRecord, AsignacionTarget } from '@/types/entities';
 import type { OVFilters } from '@/hooks/useOVs';
+
+type RowActionState = 'idle' | 'cancelling' | 'delivering' | 'done';
 
 interface OVsTabProps {
   rows: OVRecord[];
@@ -36,11 +39,17 @@ function statusBadgeClass(status: string): string {
 function SKUsDetailPanel({
   group,
   isAdmin,
+  rowActions,
   onAsignar,
+  onCancelar,
+  onEntregar,
 }: {
   group: OVGrouped;
   isAdmin: boolean;
+  rowActions: Record<number, RowActionState>;
   onAsignar: (record: OVRecord) => void;
+  onCancelar: (record: OVRecord) => void;
+  onEntregar: (record: OVRecord) => void;
 }) {
   return (
     <div className="rounded-xl border border-blue-100 bg-white overflow-hidden shadow-sm">
@@ -102,30 +111,77 @@ function SKUsDetailPanel({
                 <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
                   {r.FECHA_ENTREGA_CLIENTE || '—'}
                 </td>
-                {isAdmin && (
-                  <td className="px-4 py-2.5 text-right">
-                    {r.NUM_OC?.trim() ? (
-                      <button
-                        onClick={() => onAsignar(r)}
-                        disabled={!r._rowIndex}
-                        title={r._rowIndex ? 'Re-asignar inventario' : 'Sin índice de fila'}
-                        className="text-[11px] px-3 py-1 rounded-lg font-semibold border border-gray-300 text-gray-600 bg-white disabled:opacity-30 transition-colors hover:bg-gray-50 whitespace-nowrap"
-                      >
-                        Re-Asignar
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onAsignar(r)}
-                        disabled={!r._rowIndex}
-                        title={r._rowIndex ? 'Asignar inventario' : 'Sin índice de fila'}
-                        className="text-[11px] px-3 py-1 rounded-lg font-semibold text-white disabled:opacity-30 transition-opacity hover:opacity-90 whitespace-nowrap"
-                        style={{ backgroundColor: '#E8420C' }}
-                      >
-                        Asignar
-                      </button>
-                    )}
-                  </td>
-                )}
+                {isAdmin && (() => {
+                  const actionState = (r._rowIndex ? rowActions[r._rowIndex] : undefined) ?? 'idle';
+                  const disabled = !r._rowIndex || actionState !== 'idle';
+                  const tieneOC = !!r.NUM_OC?.trim();
+                  const cantidad = parseInt(r.CANTIDAD) || 0;
+
+                  return (
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {tieneOC ? (
+                          <button
+                            onClick={() => onAsignar(r)}
+                            disabled={disabled}
+                            title={r._rowIndex ? 'Re-asignar inventario' : 'Sin índice de fila'}
+                            className={`text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
+                              disabled
+                                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+                            }`}
+                          >
+                            Re-Asignar
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onAsignar(r)}
+                            disabled={disabled}
+                            title={r._rowIndex ? 'Asignar inventario' : 'Sin índice de fila'}
+                            className={`text-[11px] px-3 py-1 rounded-lg font-semibold transition-opacity whitespace-nowrap ${
+                              disabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'text-white hover:opacity-90'
+                            }`}
+                            style={disabled ? undefined : { backgroundColor: '#E8420C' }}
+                          >
+                            Asignar
+                          </button>
+                        )}
+
+                        {cantidad > 0 && (
+                          <button
+                            onClick={() => onCancelar(r)}
+                            disabled={disabled}
+                            title={r._rowIndex ? 'Cancelar SKU' : 'Sin índice de fila'}
+                            className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
+                              disabled
+                                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'border-red-300 text-red-600 bg-white hover:bg-red-50'
+                            }`}
+                          >
+                            {actionState === 'cancelling' && <Loader2 size={11} className="animate-spin" />}
+                            Cancelar
+                          </button>
+                        )}
+
+                        {tieneOC && (
+                          <button
+                            onClick={() => onEntregar(r)}
+                            disabled={disabled}
+                            title={r._rowIndex ? 'Marcar como entregado' : 'Sin índice de fila'}
+                            className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
+                              disabled
+                                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'border-green-300 text-green-600 bg-white hover:bg-green-50'
+                            }`}
+                          >
+                            {actionState === 'delivering' && <Loader2 size={11} className="animate-spin" />}
+                            Entregado
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>
@@ -237,6 +293,94 @@ export default function OVsTab({
   onRefetch,
 }: OVsTabProps) {
   const [modalTarget, setModalTarget] = useState<AsignacionTarget | null>(null);
+  const [rowActions, setRowActions] = useState<Record<number, RowActionState>>({});
+
+  const setRowAction = (rowIndex: number, state: RowActionState) => {
+    setRowActions(prev => ({ ...prev, [rowIndex]: state }));
+  };
+
+  const handleCancelar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
+    const ok = window.confirm('¿Cancelar este SKU? La cantidad se pondrá en 0 y se devolverá al inventario.');
+    if (!ok) return;
+
+    const rowIndex = record._rowIndex;
+    setRowAction(rowIndex, 'cancelling');
+
+    try {
+      const ventasRes = await fetch('/api/ventas/cancelar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex }),
+      });
+      if (!ventasRes.ok) {
+        const json = await ventasRes.json().catch(() => ({}));
+        throw new Error(json.error ?? `Error ${ventasRes.status}`);
+      }
+
+      if (record.NUM_OC?.trim()) {
+        const cantidad = parseInt(record.CANTIDAD) || 0;
+        const comprasRes = await fetch('/api/compras/asignar', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sku: record.SKU,
+            numOC: record.NUM_OC,
+            cantidadAsignar: cantidad,
+            revertir: true,
+          }),
+        });
+        if (!comprasRes.ok) {
+          const json = await comprasRes.json().catch(() => ({}));
+          throw new Error(json.error ?? 'Error al devolver stock a COMPRAS');
+        }
+      }
+
+      setRowAction(rowIndex, 'done');
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
+      setRowAction(rowIndex, 'idle');
+      window.alert(e.message ?? 'Error al cancelar el SKU.');
+    }
+  };
+
+  const handleEntregar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
+    const ok = window.confirm('¿Marcar como entregado?');
+    if (!ok) return;
+
+    const rowIndex = record._rowIndex;
+    setRowAction(rowIndex, 'delivering');
+
+    try {
+      const ventasRes = await fetch('/api/ventas/entregar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex }),
+      });
+      if (!ventasRes.ok) {
+        const json = await ventasRes.json().catch(() => ({}));
+        throw new Error(json.error ?? `Error ${ventasRes.status}`);
+      }
+
+      const cantidad = parseInt(record.CANTIDAD) || 0;
+      const comprasRes = await fetch('/api/compras/entregar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku: record.SKU, numOC: record.NUM_OC, cantidad }),
+      });
+      if (!comprasRes.ok) {
+        const json = await comprasRes.json().catch(() => ({}));
+        throw new Error(json.error ?? 'Error al actualizar COMPRAS');
+      }
+
+      setRowAction(rowIndex, 'done');
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
+      setRowAction(rowIndex, 'idle');
+      window.alert(e.message ?? 'Error al marcar como entregado.');
+    }
+  };
 
   const handleAsignar = (record: OVRecord) => {
     if (!record._rowIndex) return;
@@ -317,7 +461,10 @@ export default function OVsTab({
           <SKUsDetailPanel
             group={group}
             isAdmin={isAdmin}
+            rowActions={rowActions}
             onAsignar={handleAsignar}
+            onCancelar={handleCancelar}
+            onEntregar={handleEntregar}
           />
         )}
       />
