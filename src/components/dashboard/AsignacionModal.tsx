@@ -19,6 +19,8 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
   const [submitting, setSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [sinStockSubmitting, setSinStockSubmitting] = useState(false);
+  const [sinStockError, setSinStockError] = useState<string | null>(null);
 
   const fetchStock = useCallback(async () => {
     setLoading(true);
@@ -139,6 +141,36 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
     }
   };
 
+  const handleConfirmarSinStock = async () => {
+    setSinStockSubmitting(true);
+    setSinStockError(null);
+
+    try {
+      const res = await fetch('/api/ventas/asignar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ovRowIndex: target.ventaRowIndex,
+          isFirstOC: true,
+          almacen: 'Por asignar',
+          estado: 'Sin stock',
+          status: 'Pendiente',
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `Error ${res.status}`);
+      }
+
+      onClose();
+      setTimeout(() => onSuccess(), 1500);
+    } catch (e: any) {
+      setSinStockError(e.message ?? 'Error al confirmar sin stock.');
+    } finally {
+      setSinStockSubmitting(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -199,9 +231,24 @@ export default function AsignacionModal({ target, onClose, onSuccess }: Asignaci
           ) : compras.length === 0 ? (
             <div className="py-16 text-center px-6">
               <AlertTriangle size={28} className="mx-auto text-orange-400 mb-2" />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 mb-4">
                 No hay stock disponible para <span className="font-mono font-semibold">{target.sku}</span> en ninguna OC.
               </p>
+              {sinStockError && (
+                <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4 text-left max-w-sm mx-auto">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  <span>{sinStockError}</span>
+                </div>
+              )}
+              <button
+                onClick={handleConfirmarSinStock}
+                disabled={sinStockSubmitting}
+                className="inline-flex items-center gap-2 text-sm px-5 py-2.5 rounded-lg text-white font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                style={{ backgroundColor: ACCENT }}
+              >
+                {sinStockSubmitting && <Loader2 size={14} className="animate-spin" />}
+                {sinStockSubmitting ? 'Procesando…' : 'Confirmar Sin Stock'}
+              </button>
             </div>
           ) : (
             <div>
