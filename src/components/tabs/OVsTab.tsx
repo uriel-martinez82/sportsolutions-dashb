@@ -54,7 +54,7 @@ function SKUsDetailPanel({
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
-              {['SKU', 'Descripción', 'Cant.', 'Almacén', 'Status', 'Entrega', ...(isAdmin ? [''] : [])].map(h => (
+              {['SKU', 'Descripción', 'Cant.', 'Almacén', 'Estado', 'Status de la venta', 'Entrega', ...(isAdmin ? [''] : [])].map(h => (
                 <th
                   key={h}
                   className="text-left px-4 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
@@ -87,6 +87,11 @@ function SKUsDetailPanel({
                 <td className="px-4 py-2.5">
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
                     {r.ALMACEN || '—'}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
+                    {r.ESTADO || '—'}
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
