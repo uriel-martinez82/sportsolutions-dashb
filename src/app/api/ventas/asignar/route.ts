@@ -5,8 +5,17 @@ import { getHeaderMap, indexToColumnLetter, batchUpdateCells, appendRow } from '
 
 const VENTAS_LAST_COL = 'R';
 
-const VALID_STATUSES = ['Apartado', 'Sin cobertura'];
+const VALID_STATUSES = ['Apartado', 'Sin cobertura', 'Pendiente'];
 const VALID_ESTADOS = ['Apartado', 'Sin stock'];
+
+// Campos que pueden actualizarse parcialmente en una fila existente de VENTAS.
+const UPDATABLE_FIELDS: { body: string; column: string }[] = [
+  { body: 'numOC', column: 'NUM_OC' },
+  { body: 'cantidad', column: 'CANTIDAD' },
+  { body: 'status', column: 'STATUS' },
+  { body: 'estado', column: 'ESTADO' },
+  { body: 'almacen', column: 'ALMACEN' },
+];
 
 export async function PATCH(request: Request) {
   const session = await getServerSession(authOptions);
@@ -44,10 +53,14 @@ export async function PATCH(request: Request) {
   if (!Number.isInteger(Number(ovRowIndex)) || Number(ovRowIndex) < 2) {
     return NextResponse.json({ error: 'ovRowIndex inválido' }, { status: 400 });
   }
-  if (!VALID_STATUSES.includes(status) || !VALID_ESTADOS.includes(estado)) {
-    return NextResponse.json({ error: 'Valores de status/estado no permitidos' }, { status: 400 });
+  if (status !== undefined && !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Valor de status no permitido' }, { status: 400 });
   }
-  if (!numOC || Number(cantidad) <= 0) {
+  if (estado !== undefined && !VALID_ESTADOS.includes(estado)) {
+    return NextResponse.json({ error: 'Valor de estado no permitido' }, { status: 400 });
+  }
+  // Al agregar una fila nueva para una OC adicional, numOC y cantidad son obligatorios.
+  if (!isFirstOC && (!numOC || Number(cantidad) <= 0)) {
     return NextResponse.json({ error: 'numOC y cantidad son requeridos' }, { status: 400 });
   }
 
@@ -62,13 +75,22 @@ export async function PATCH(request: Request) {
     };
 
     if (isFirstOC) {
-      // Actualizar la fila original: asignar NUM_OC, CANTIDAD, STATUS, ESTADO
-      await batchUpdateCells(spreadsheetId, [
-        { range: `VENTAS!${colOf('NUM_OC')}${ovRowIndex}`, value: numOC },
-        { range: `VENTAS!${colOf('CANTIDAD')}${ovRowIndex}`, value: cantidad },
-        { range: `VENTAS!${colOf('STATUS')}${ovRowIndex}`, value: status },
-        { range: `VENTAS!${colOf('ESTADO')}${ovRowIndex}`, value: estado },
-      ]);
+      // Actualización parcial de la fila original: solo los campos presentes en el body.
+      const bodyValues: Record<string, string | number | undefined> = {
+        numOC, cantidad, status, estado, almacen,
+      };
+      const updates = UPDATABLE_FIELDS
+        .filter(f => bodyValues[f.body] !== undefined)
+        .map(f => ({
+          range: `VENTAS!${colOf(f.column)}${ovRowIndex}`,
+          value: f.body === 'cantidad' ? Number(bodyValues[f.body]) : bodyValues[f.body]!,
+        }));
+
+      if (updates.length === 0) {
+        return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 });
+      }
+
+      await batchUpdateCells(spreadsheetId, updates);
     } else {
       // Agregar fila nueva para esta OC adicional
       const maxIdx = Math.max(...Array.from(headerMap.values()));

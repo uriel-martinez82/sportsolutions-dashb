@@ -115,6 +115,7 @@ function OCsDetailTable({
                   {oc.CANTIDAD_APARTADA > 0 ? (
                     <button
                       onClick={() => onApartadoClick(item.SKU, oc.NUM_OC)}
+                      title="Cantidad de unidades apartadas de esta OC para órdenes de venta activas. Hacé clic para ver el detalle de qué OVs tienen unidades reservadas y en qué cantidad."
                       className="font-semibold text-orange-600 cursor-pointer underline decoration-dotted decoration-orange-400 underline-offset-2 hover:text-orange-700 transition-colors"
                     >
                       {oc.CANTIDAD_APARTADA.toLocaleString('es-MX')}

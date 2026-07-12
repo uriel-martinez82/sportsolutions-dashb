@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import FilterBar from '@/components/ui/FilterBar';
 import DataTable, { type ColumnDef } from '@/components/ui/DataTable';
 import AsignacionModal from '@/components/dashboard/AsignacionModal';
 import type { OVGrouped, OVRecord, AsignacionTarget } from '@/types/entities';
 import type { OVFilters } from '@/hooks/useOVs';
+
+type RowActionState = 'idle' | 'cancelling' | 'delivering' | 'done';
 
 interface OVsTabProps {
   rows: OVRecord[];
@@ -36,25 +39,59 @@ function statusBadgeClass(status: string): string {
 function SKUsDetailPanel({
   group,
   isAdmin,
+  rowActions,
+  entregaTotalProcessing,
   onAsignar,
+  onCancelar,
+  onEntregar,
+  onEntregaTotal,
 }: {
   group: OVGrouped;
   isAdmin: boolean;
+  rowActions: Record<number, RowActionState>;
+  entregaTotalProcessing: boolean;
   onAsignar: (record: OVRecord) => void;
+  onCancelar: (record: OVRecord) => void;
+  onEntregar: (record: OVRecord) => void;
+  onEntregaTotal: (group: OVGrouped) => void;
 }) {
+  const algunSinAsignar = group.skus.some(
+    s => (parseInt(s.CANTIDAD) || 0) > 0 && !s.NUM_OC?.trim()
+  );
+  const entregaTotalDisabled = algunSinAsignar || entregaTotalProcessing;
+
   return (
     <div className="rounded-xl border border-blue-100 bg-white overflow-hidden shadow-sm">
-      <div className="px-4 py-2.5 bg-blue-50/60 border-b border-blue-100">
+      <div className="px-4 py-2.5 bg-blue-50/60 border-b border-blue-100 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-gray-600">
           SKUs de <span className="font-mono">{group.NUM_OV}</span>
           <span className="font-normal text-gray-400 ml-2">· {group.CLIENTE}</span>
         </p>
+        {isAdmin && (
+          <button
+            onClick={() => onEntregaTotal(group)}
+            disabled={entregaTotalDisabled}
+            title={
+              algunSinAsignar
+                ? 'Todos los SKUs deben tener OC asignada'
+                : 'Marcar todos los SKUs de esta OV como entregados de una sola vez. Solo se habilita cuando todos los SKUs tienen stock asignado. Una vez confirmado, no se puede deshacer.'
+            }
+            className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-semibold border transition-colors whitespace-nowrap shrink-0 ${
+              entregaTotalDisabled
+                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                : 'border-green-300 text-green-600 bg-white hover:bg-green-50'
+            }`}
+          >
+            {entregaTotalProcessing && <Loader2 size={12} className="animate-spin" />}
+            Entrega total
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
-              {['SKU', 'Descripción', 'Cant.', 'Almacén', 'Status', 'Entrega', ...(isAdmin ? [''] : [])].map(h => (
+              {['SKU', 'Descripción', 'Cant.', 'Almacén', 'Estado', 'Status de la venta', 'Entrega', ...(isAdmin ? [''] : [])].map(h => (
                 <th
                   key={h}
                   className="text-left px-4 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
@@ -90,6 +127,11 @@ function SKUsDetailPanel({
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
+                    {r.ESTADO || '—'}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5">
                   <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${statusBadgeClass(r.STATUS)}`}>
                     {r.STATUS || '—'}
                   </span>
@@ -97,30 +139,93 @@ function SKUsDetailPanel({
                 <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap">
                   {r.FECHA_ENTREGA_CLIENTE || '—'}
                 </td>
-                {isAdmin && (
-                  <td className="px-4 py-2.5 text-right">
-                    {r.NUM_OC?.trim() ? (
-                      <button
-                        onClick={() => onAsignar(r)}
-                        disabled={!r._rowIndex}
-                        title={r._rowIndex ? 'Re-asignar inventario' : 'Sin índice de fila'}
-                        className="text-[11px] px-3 py-1 rounded-lg font-semibold border border-gray-300 text-gray-600 bg-white disabled:opacity-30 transition-colors hover:bg-gray-50 whitespace-nowrap"
-                      >
-                        Re-Asignar
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => onAsignar(r)}
-                        disabled={!r._rowIndex}
-                        title={r._rowIndex ? 'Asignar inventario' : 'Sin índice de fila'}
-                        className="text-[11px] px-3 py-1 rounded-lg font-semibold text-white disabled:opacity-30 transition-opacity hover:opacity-90 whitespace-nowrap"
-                        style={{ backgroundColor: '#E8420C' }}
-                      >
-                        Asignar
-                      </button>
-                    )}
-                  </td>
-                )}
+                {isAdmin && (() => {
+                  const actionState = (r._rowIndex ? rowActions[r._rowIndex] : undefined) ?? 'idle';
+                  const disabled = !r._rowIndex || actionState !== 'idle';
+                  const tieneOC = !!r.NUM_OC?.trim();
+                  const cantidad = parseInt(r.CANTIDAD) || 0;
+
+                  return (
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {tieneOC ? (
+                          <button
+                            onClick={() => onAsignar(r)}
+                            disabled={disabled}
+                            title={
+                              r._rowIndex
+                                ? 'Este SKU ya tiene stock asignado. Podés modificar la asignación eligiendo una OC diferente o cambiando las cantidades. El inventario se actualizará automáticamente.'
+                                : 'Sin índice de fila'
+                            }
+                            className={`text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
+                              disabled
+                                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'border-gray-300 text-gray-600 bg-white hover:bg-gray-50'
+                            }`}
+                          >
+                            Re-Asignar
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => onAsignar(r)}
+                            disabled={disabled}
+                            title={
+                              r._rowIndex
+                                ? 'Asignar productos del inventario a este SKU. Se abrirá un modal donde podrás elegir de qué Orden de Compra tomar el stock y en qué cantidad.'
+                                : 'Sin índice de fila'
+                            }
+                            className={`text-[11px] px-3 py-1 rounded-lg font-semibold transition-opacity whitespace-nowrap ${
+                              disabled ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'text-white hover:opacity-90'
+                            }`}
+                            style={disabled ? undefined : { backgroundColor: '#E8420C' }}
+                          >
+                            Asignar
+                          </button>
+                        )}
+
+                        {cantidad > 0 && (
+                          <button
+                            onClick={() => onCancelar(r)}
+                            disabled={disabled}
+                            title={
+                              r._rowIndex
+                                ? 'Cancelar este SKU de la OV. La cantidad se pondrá en 0 y las unidades apartadas volverán al inventario disponible. Esta acción no se puede deshacer.'
+                                : 'Sin índice de fila'
+                            }
+                            className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
+                              disabled
+                                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'border-red-300 text-red-600 bg-white hover:bg-red-50'
+                            }`}
+                          >
+                            {actionState === 'cancelling' && <Loader2 size={11} className="animate-spin" />}
+                            Cancelar
+                          </button>
+                        )}
+
+                        {tieneOC && (
+                          <button
+                            onClick={() => onEntregar(r)}
+                            disabled={disabled}
+                            title={
+                              r._rowIndex
+                                ? 'Marcar este SKU como entregado al cliente. Las unidades se restarán definitivamente del inventario apartado y no podrán modificarse nuevamente.'
+                                : 'Sin índice de fila'
+                            }
+                            className={`inline-flex items-center gap-1 text-[11px] px-3 py-1 rounded-lg font-semibold border transition-colors whitespace-nowrap ${
+                              disabled
+                                ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'border-green-300 text-green-600 bg-white hover:bg-green-50'
+                            }`}
+                          >
+                            {actionState === 'delivering' && <Loader2 size={11} className="animate-spin" />}
+                            Entregado
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })()}
               </tr>
             ))}
           </tbody>
@@ -232,6 +337,125 @@ export default function OVsTab({
   onRefetch,
 }: OVsTabProps) {
   const [modalTarget, setModalTarget] = useState<AsignacionTarget | null>(null);
+  const [rowActions, setRowActions] = useState<Record<number, RowActionState>>({});
+  const [entregaTotalState, setEntregaTotalState] = useState<Record<string, 'idle' | 'processing'>>({});
+
+  const setRowAction = (rowIndex: number, state: RowActionState) => {
+    setRowActions(prev => ({ ...prev, [rowIndex]: state }));
+  };
+
+  const handleCancelar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
+    const ok = window.confirm('¿Cancelar este SKU? La cantidad se pondrá en 0 y se devolverá al inventario.');
+    if (!ok) return;
+
+    const rowIndex = record._rowIndex;
+    setRowAction(rowIndex, 'cancelling');
+
+    try {
+      const ventasRes = await fetch('/api/ventas/cancelar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex }),
+      });
+      if (!ventasRes.ok) {
+        const json = await ventasRes.json().catch(() => ({}));
+        throw new Error(json.error ?? `Error ${ventasRes.status}`);
+      }
+
+      if (record.NUM_OC?.trim()) {
+        const cantidad = parseInt(record.CANTIDAD) || 0;
+        const comprasRes = await fetch('/api/compras/asignar', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sku: record.SKU,
+            numOC: record.NUM_OC,
+            cantidadAsignar: cantidad,
+            revertir: true,
+          }),
+        });
+        if (!comprasRes.ok) {
+          const json = await comprasRes.json().catch(() => ({}));
+          throw new Error(json.error ?? 'Error al devolver stock a COMPRAS');
+        }
+      }
+
+      setRowAction(rowIndex, 'done');
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
+      setRowAction(rowIndex, 'idle');
+      window.alert(e.message ?? 'Error al cancelar el SKU.');
+    }
+  };
+
+  /** Marca un SKU como entregado (VENTAS + COMPRAS), sin confirmación ni refetch. */
+  const entregarSku = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
+    const rowIndex = record._rowIndex;
+    setRowAction(rowIndex, 'delivering');
+
+    try {
+      const ventasRes = await fetch('/api/ventas/entregar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex }),
+      });
+      if (!ventasRes.ok) {
+        const json = await ventasRes.json().catch(() => ({}));
+        throw new Error(json.error ?? `Error ${ventasRes.status}`);
+      }
+
+      const cantidad = parseInt(record.CANTIDAD) || 0;
+      const comprasRes = await fetch('/api/compras/entregar', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku: record.SKU, numOC: record.NUM_OC, cantidad }),
+      });
+      if (!comprasRes.ok) {
+        const json = await comprasRes.json().catch(() => ({}));
+        throw new Error(json.error ?? 'Error al actualizar COMPRAS');
+      }
+
+      setRowAction(rowIndex, 'done');
+    } catch (e: any) {
+      setRowAction(rowIndex, 'idle');
+      throw e;
+    }
+  };
+
+  const handleEntregar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
+    const ok = window.confirm('¿Marcar como entregado?');
+    if (!ok) return;
+
+    try {
+      await entregarSku(record);
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
+      window.alert(e.message ?? 'Error al marcar como entregado.');
+    }
+  };
+
+  const handleEntregaTotal = async (group: OVGrouped) => {
+    const ok = window.confirm('¿Marcar toda la OV como entregada?');
+    if (!ok) return;
+
+    setEntregaTotalState(prev => ({ ...prev, [group.NUM_OV]: 'processing' }));
+
+    const pendientes = group.skus.filter(r => r.NUM_OC?.trim() && r.STATUS !== 'Entregado');
+
+    try {
+      for (const r of pendientes) {
+        await entregarSku(r);
+      }
+      setTimeout(() => onRefetch(), 1500);
+    } catch (e: any) {
+      window.alert(e.message ?? 'Error al marcar la OV como entregada.');
+    } finally {
+      setEntregaTotalState(prev => ({ ...prev, [group.NUM_OV]: 'idle' }));
+    }
+  };
 
   const handleAsignar = (record: OVRecord) => {
     if (!record._rowIndex) return;
@@ -312,7 +536,12 @@ export default function OVsTab({
           <SKUsDetailPanel
             group={group}
             isAdmin={isAdmin}
+            rowActions={rowActions}
+            entregaTotalProcessing={entregaTotalState[group.NUM_OV] === 'processing'}
             onAsignar={handleAsignar}
+            onCancelar={handleCancelar}
+            onEntregar={handleEntregar}
+            onEntregaTotal={handleEntregaTotal}
           />
         )}
       />
