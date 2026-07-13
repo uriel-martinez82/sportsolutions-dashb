@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import FilterBar from '@/components/ui/FilterBar';
 import DataTable, { type ColumnDef } from '@/components/ui/DataTable';
 import AsignacionModal from '@/components/dashboard/AsignacionModal';
+import ConfirmacionModal, { type ConfirmacionAccion } from '@/components/dashboard/ConfirmacionModal';
 import type { OVGrouped, OVRecord, AsignacionTarget } from '@/types/entities';
 import type { OVFilters } from '@/hooks/useOVs';
 
@@ -339,15 +340,19 @@ export default function OVsTab({
   const [modalTarget, setModalTarget] = useState<AsignacionTarget | null>(null);
   const [rowActions, setRowActions] = useState<Record<number, RowActionState>>({});
   const [entregaTotalState, setEntregaTotalState] = useState<Record<string, 'idle' | 'processing'>>({});
+  const [confirmTarget, setConfirmTarget] = useState<{ accion: ConfirmacionAccion; record: OVRecord } | null>(null);
 
   const setRowAction = (rowIndex: number, state: RowActionState) => {
     setRowActions(prev => ({ ...prev, [rowIndex]: state }));
   };
 
-  const handleCancelar = async (record: OVRecord) => {
+  const requestCancelar = (record: OVRecord) => {
     if (!record._rowIndex) return;
-    const ok = window.confirm('¿Cancelar este SKU? La cantidad se pondrá en 0 y se devolverá al inventario.');
-    if (!ok) return;
+    setConfirmTarget({ accion: 'cancelar', record });
+  };
+
+  const executeCancelar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
 
     const rowIndex = record._rowIndex;
     setRowAction(rowIndex, 'cancelling');
@@ -424,16 +429,29 @@ export default function OVsTab({
     }
   };
 
-  const handleEntregar = async (record: OVRecord) => {
+  const requestEntregar = (record: OVRecord) => {
     if (!record._rowIndex) return;
-    const ok = window.confirm('¿Marcar como entregado?');
-    if (!ok) return;
+    setConfirmTarget({ accion: 'entregar', record });
+  };
 
+  const executeEntregar = async (record: OVRecord) => {
+    if (!record._rowIndex) return;
     try {
       await entregarSku(record);
       setTimeout(() => onRefetch(), 1500);
     } catch (e: any) {
       window.alert(e.message ?? 'Error al marcar como entregado.');
+    }
+  };
+
+  const handleConfirmAccion = () => {
+    if (!confirmTarget) return;
+    const { accion, record } = confirmTarget;
+    setConfirmTarget(null);
+    if (accion === 'cancelar') {
+      executeCancelar(record);
+    } else {
+      executeEntregar(record);
     }
   };
 
@@ -539,8 +557,8 @@ export default function OVsTab({
             rowActions={rowActions}
             entregaTotalProcessing={entregaTotalState[group.NUM_OV] === 'processing'}
             onAsignar={handleAsignar}
-            onCancelar={handleCancelar}
-            onEntregar={handleEntregar}
+            onCancelar={requestCancelar}
+            onEntregar={requestEntregar}
             onEntregaTotal={handleEntregaTotal}
           />
         )}
@@ -551,6 +569,15 @@ export default function OVsTab({
           target={modalTarget}
           onClose={() => setModalTarget(null)}
           onSuccess={handleSuccess}
+        />
+      )}
+
+      {confirmTarget && (
+        <ConfirmacionModal
+          accion={confirmTarget.accion}
+          record={confirmTarget.record}
+          onConfirm={handleConfirmAccion}
+          onClose={() => setConfirmTarget(null)}
         />
       )}
     </div>
