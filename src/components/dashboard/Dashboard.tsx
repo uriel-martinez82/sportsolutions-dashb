@@ -9,6 +9,7 @@ import { useInventario } from '@/hooks/useInventario';
 import OverviewTab from '@/components/tabs/OverviewTab';
 import OVsTab from '@/components/tabs/OVsTab';
 import InventarioTab from '@/components/tabs/InventarioTab';
+import AgenteAyuda from '@/components/dashboard/AgenteAyuda';
 
 const ACCENT = '#E8420C';
 
@@ -173,6 +174,8 @@ export default function Dashboard() {
           />
         )}
       </main>
+
+      <AgenteAyuda />
     </div>
   );
 }

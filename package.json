@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@types/recharts": "^1.8.29",
     "googleapis": "^173.0.0",
     "lucide-react": "^1.21.0",
