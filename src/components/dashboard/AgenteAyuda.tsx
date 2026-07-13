@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const ACCENT = '#E8420C';
 
@@ -105,14 +107,20 @@ export default function AgenteAyuda() {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
+                  className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm break-words ${
                     m.role === 'user'
-                      ? 'text-white rounded-br-sm'
+                      ? 'text-white whitespace-pre-wrap rounded-br-sm'
                       : 'bg-white text-gray-700 border border-gray-100 rounded-bl-sm'
                   }`}
                   style={m.role === 'user' ? { backgroundColor: ACCENT } : undefined}
                 >
-                  {m.content}
+                  {m.role === 'user' ? (
+                    m.content
+                  ) : (
+                    <div className="prose prose-sm max-w-none text-sm prose-table:my-2 prose-th:border prose-td:border prose-th:border-gray-200 prose-td:border-gray-200 prose-th:px-2 prose-td:px-2 prose-th:py-1 prose-td:py-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
