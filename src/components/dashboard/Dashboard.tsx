@@ -15,7 +15,7 @@ const ACCENT = '#E8420C';
 type TabKey = 'overview' | 'ovs' | 'inventario';
 
 export default function Dashboard() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const isAdmin = session?.user?.role === 'admin';
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -24,17 +24,23 @@ export default function Dashboard() {
   const ovsState = useOVs(data?.ovsPendientes ?? []);
   const inventarioState = useInventario(data?.inventario ?? []);
 
-  // Tab list — Inventario visible solo para admins
-  const tabs: { key: TabKey; label: string }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'ovs', label: 'OVs Pendientes' },
-    ...(isAdmin ? [{ key: 'inventario' as TabKey, label: 'Inventario' }] : []),
-  ];
+  // Tab list — vendedores solo ven Inventario; admins ven las 3
+  const tabs: { key: TabKey; label: string }[] = isAdmin
+    ? [
+        { key: 'overview', label: 'Overview' },
+        { key: 'ovs', label: 'OVs Pendientes' },
+        { key: 'inventario', label: 'Inventario' },
+      ]
+    : [{ key: 'inventario', label: 'Inventario' }];
 
-  // Si un vendedor tenía la tab de inventario activa, volver a overview
+  // Vendedores van directo a Inventario al loguearse. Se espera a que la sesión
+  // resuelva (sessionStatus === 'authenticated') para no forzar la tab de un admin
+  // durante el fetch inicial de useSession, cuando isAdmin es momentáneamente false.
   useEffect(() => {
-    if (!isAdmin && activeTab === 'inventario') setActiveTab('overview');
-  }, [isAdmin, activeTab]);
+    if (sessionStatus === 'authenticated' && !isAdmin) {
+      setActiveTab('inventario');
+    }
+  }, [sessionStatus, isAdmin]);
 
   if (loading) {
     return (
@@ -143,9 +149,9 @@ export default function Dashboard() {
 
       {/* Contenido */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {activeTab === 'overview' && <OverviewTab data={data} />}
+        {activeTab === 'overview' && isAdmin && <OverviewTab data={data} />}
 
-        {activeTab === 'ovs' && (
+        {activeTab === 'ovs' && isAdmin && (
           <OVsTab
             rows={ovsState.rows}
             allGroups={ovsState.allGroups}
@@ -161,7 +167,7 @@ export default function Dashboard() {
           />
         )}
 
-        {activeTab === 'inventario' && isAdmin && (
+        {activeTab === 'inventario' && (
           <InventarioTab
             items={inventarioState.items}
             filtered={inventarioState.filtered}
