@@ -1,70 +1,18 @@
 import type { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import bcrypt from 'bcryptjs';
+import { sql } from '@/lib/db';
 
-type UserRole = 'admin' | 'vendedor';
+type UserRole = 'admin' | 'superadmin' | 'vendedor';
 
-type AppUser = {
-  id: string;
-  name: string;
+interface UsuarioRow {
+  id: number;
+  nombre: string;
   email: string;
-  password: string;
+  password_hash: string;
   role: UserRole;
-};
-
-const users: AppUser[] = [
-  // Admins
-  {
-    id: '1',
-    name: 'Admin Uno',
-    email: 'admin1@sportsolutions.mx',
-    password: 'admin123',
-    role: 'admin',
-  },
-  {
-    id: '2',
-    name: 'Admin Dos',
-    email: 'admin2@sportsolutions.mx',
-    password: 'admin123',
-    role: 'admin',
-  },
-  {
-    id: '3',
-    name: 'Admin Tres',
-    email: 'admin3@sportsolutions.mx',
-    password: 'admin123',
-    role: 'admin',
-  },
-  {
-    id: '7',
-    name: 'Uriel Martinez',
-    email: 'uriel.martinez.elias@gmail.com',
-    password: 'admin123',
-    role: 'admin',
-  },
-
-  // Vendedores
-  {
-    id: '4',
-    name: 'Vendedor Uno',
-    email: 'vendedor1@sportsolutions.mx',
-    password: 'vende123',
-    role: 'vendedor',
-  },
-  {
-    id: '5',
-    name: 'Vendedor Dos',
-    email: 'vendedor2@sportsolutions.mx',
-    password: 'vende123',
-    role: 'vendedor',
-  },
-  {
-    id: '6',
-    name: 'Vendedor Tres',
-    email: 'vendedor3@sportsolutions.mx',
-    password: 'vende123',
-    role: 'vendedor',
-  },
-];
+  must_change_password: boolean;
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -80,31 +28,46 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = users.find(
-          (u) =>
-            u.email === credentials.email &&
-            u.password === credentials.password
-        );
+        const rows = (await sql`
+          SELECT id, nombre, email, password_hash, role, must_change_password
+          FROM usuarios
+          WHERE email = ${credentials.email}
+          LIMIT 1
+        `) as UsuarioRow[];
 
-        if (!user) {
+        const usuario = rows[0];
+        if (!usuario) {
+          return null;
+        }
+
+        const passwordValida = await bcrypt.compare(credentials.password, usuario.password_hash);
+        if (!passwordValida) {
           return null;
         }
 
         return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
+          id: String(usuario.id),
+          name: usuario.nombre,
+          email: usuario.email,
+          role: usuario.role,
+          mustChangePassword: usuario.must_change_password,
         };
       },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.mustChangePassword = user.mustChangePassword;
+      }
+
+      // Permite refrescar mustChangePassword sin forzar un nuevo login,
+      // vía useSession().update({ mustChangePassword: false }) tras cambiarla.
+      if (trigger === 'update' && session?.mustChangePassword !== undefined) {
+        token.mustChangePassword = session.mustChangePassword;
       }
 
       return token;
@@ -114,6 +77,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.mustChangePassword = token.mustChangePassword;
       }
 
       return session;
